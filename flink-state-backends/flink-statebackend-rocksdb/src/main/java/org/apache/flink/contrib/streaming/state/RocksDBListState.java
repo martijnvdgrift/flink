@@ -148,7 +148,7 @@ class RocksDBListState<K, N, V>
 				return element;
 			}
 		} catch (IOException e) {
-			throw new FlinkRuntimeException("Unexpected list element deserialization failure");
+			throw new FlinkRuntimeException("Unexpected list element deserialization failure", e);
 		}
 		return null;
 	}
@@ -328,7 +328,7 @@ class RocksDBListState<K, N, V>
 		byte[] serializeValueList(
 			List<T> valueList,
 			TypeSerializer<T> elementSerializer,
-			byte delimiter) throws IOException {
+			@SuppressWarnings("SameParameterValue") byte delimiter) throws IOException {
 
 			out.clear();
 			boolean first = true;

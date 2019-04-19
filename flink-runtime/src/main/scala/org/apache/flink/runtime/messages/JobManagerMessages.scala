@@ -93,7 +93,7 @@ object JobManagerMessages {
   /**
    * Triggers the submission of the recovered job
    *
-   * @param submittedJobGraph Contains the submitted JobGraph and the associated JobInfo
+   * @param submittedJobGraph Contains the submitted JobGraph
    */
   case class RecoverSubmittedJob(submittedJobGraph: SubmittedJobGraph)
     extends RequiresLeaderSessionID
@@ -125,14 +125,6 @@ object JobManagerMessages {
       jobID: JobID,
       savepointDirectory: String = null)
     extends RequiresLeaderSessionID
-
-  /**
-   * Stops a (streaming) job with the given [[jobID]] at the JobManager. The result of
-   * stopping is sent back to the sender as a [[StoppingResponse]] message.
-   *
-   * @param jobID
-   */
-  case class StopJob(jobID: JobID) extends RequiresLeaderSessionID
 
   /**
    * Requesting next input split for the
@@ -173,7 +165,7 @@ object JobManagerMessages {
     extends RequiresLeaderSessionID
 
   /**
-   * Notifies the [[org.apache.flink.runtime.jobmanager.JobManager]] about available data for a
+   * Notifies the org.apache.flink.runtime.jobmanager.JobManager about available data for a
    * produced partition.
    * <p>
    * There is a call to this method for each
@@ -182,7 +174,7 @@ object JobManagerMessages {
    * either when first producing data (for pipelined executions) or when all data has been produced
    * (for staged executions).
    * <p>
-   * The [[org.apache.flink.runtime.jobmanager.JobManager]] then can decide when to schedule the
+   * The org.apache.flink.runtime.jobmanager.JobManager then can decide when to schedule the
    * partition consumers of the given session.
    *
    * @see [[org.apache.flink.runtime.io.network.partition.ResultPartition]]
@@ -304,23 +296,6 @@ object JobManagerMessages {
    * @param cause
    */
   case class CancellationFailure(jobID: JobID, cause: Throwable) extends CancellationResponse
-
-  sealed trait StoppingResponse {
-    def jobID: JobID
-  }
-
-  /**
-   * Denotes a successful (streaming) job stopping
-   * @param jobID
-   */
-  case class StoppingSuccess(jobID: JobID) extends StoppingResponse
-
-  /**
-   * Denotes a failed (streaming) job stopping
-   * @param jobID
-   * @param cause
-   */
-  case class StoppingFailure(jobID: JobID, cause: Throwable) extends StoppingResponse
 
   /**
    * Requests all currently running jobs from the job manager. This message triggers a

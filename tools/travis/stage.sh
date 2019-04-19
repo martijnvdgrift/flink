@@ -38,6 +38,9 @@ flink-scala,\
 flink-streaming-java,\
 flink-streaming-scala"
 
+MODULES_CORE_JDK9_EXCLUSIONS="\
+!flink-runtime"
+
 MODULES_LIBRARIES="\
 flink-libraries/flink-cep,\
 flink-libraries/flink-cep-scala,\
@@ -47,7 +50,15 @@ flink-libraries/flink-gelly-examples,\
 flink-libraries/flink-ml,\
 flink-libraries/flink-python,\
 flink-libraries/flink-streaming-python,\
-flink-libraries/flink-table,\
+flink-table/flink-table-common,\
+flink-table/flink-table-api-java,\
+flink-table/flink-table-api-scala,\
+flink-table/flink-table-api-java-bridge,\
+flink-table/flink-table-api-scala-bridge,\
+flink-table/flink-table-planner,\
+flink-table/flink-table-planner-blink,\
+flink-table/flink-table-runtime-blink,\
+flink-table/flink-sql-client,\
 flink-queryable-state/flink-queryable-state-runtime,\
 flink-queryable-state/flink-queryable-state-client-java"
 
@@ -60,12 +71,13 @@ flink-filesystems/flink-s3-fs-hadoop,\
 flink-filesystems/flink-s3-fs-presto,\
 flink-formats/flink-avro,\
 flink-formats/flink-parquet,\
+flink-formats/flink-json,\
+flink-formats/flink-csv,\
 flink-connectors/flink-hbase,\
 flink-connectors/flink-hcatalog,\
 flink-connectors/flink-hadoop-compatibility,\
 flink-connectors/flink-jdbc,\
 flink-connectors/flink-connector-cassandra,\
-flink-connectors/flink-connector-elasticsearch,\
 flink-connectors/flink-connector-elasticsearch2,\
 flink-connectors/flink-connector-elasticsearch5,\
 flink-connectors/flink-connector-elasticsearch6,\
@@ -78,6 +90,11 @@ flink-connectors/flink-connector-kafka-base,\
 flink-connectors/flink-connector-nifi,\
 flink-connectors/flink-connector-rabbitmq,\
 flink-connectors/flink-connector-twitter"
+
+MODULES_CONNECTORS_JDK9_EXCLUSIONS="\
+!flink-filesystems/flink-s3-fs-hadoop,\
+!flink-filesystems/flink-s3-fs-presto,\
+!flink-connectors/flink-hbase"
 
 MODULES_TESTS="\
 flink-tests"
@@ -122,25 +139,37 @@ function get_compile_modules_for_stage() {
 function get_test_modules_for_stage() {
     local stage=$1
 
+    local modules_core=$MODULES_CORE
+    local modules_libraries=$MODULES_LIBRARIES
+    local modules_connectors=$MODULES_CONNECTORS
+    local modules_tests=$MODULES_TESTS
+    local negated_core=\!${MODULES_CORE//,/,\!}
+    local negated_libraries=\!${MODULES_LIBRARIES//,/,\!}
+    local negated_connectors=\!${MODULES_CONNECTORS//,/,\!}
+    local negated_tests=\!${MODULES_TESTS//,/,\!}
+    local modules_misc="$negated_core,$negated_libraries,$negated_connectors,$negated_tests"
+
+    # various modules fail testing on JDK 9; exclude them
+    if [[ ${PROFILE} == *"jdk9"* ]]; then
+        modules_core="$modules_core,$MODULES_CORE_JDK9_EXCLUSIONS"
+        modules_connectors="$modules_connectors,$MODULES_CONNECTORS_JDK9_EXCLUSIONS"
+    fi
+
     case ${stage} in
         (${STAGE_CORE})
-            echo "-pl $MODULES_CORE"
+            echo "-pl $modules_core"
         ;;
         (${STAGE_LIBRARIES})
-            echo "-pl $MODULES_LIBRARIES"
+            echo "-pl $modules_libraries"
         ;;
         (${STAGE_CONNECTORS})
-            echo "-pl $MODULES_CONNECTORS"
+            echo "-pl $modules_connectors"
         ;;
         (${STAGE_TESTS})
-            echo "-pl $MODULES_TESTS"
+            echo "-pl $modules_tests"
         ;;
         (${STAGE_MISC})
-            NEGATED_CORE=\!${MODULES_CORE//,/,\!}
-            NEGATED_LIBRARIES=\!${MODULES_LIBRARIES//,/,\!}
-            NEGATED_CONNECTORS=\!${MODULES_CONNECTORS//,/,\!}
-            NEGATED_TESTS=\!${MODULES_TESTS//,/,\!}
-            echo "-pl $NEGATED_CORE,$NEGATED_LIBRARIES,$NEGATED_CONNECTORS,$NEGATED_TESTS"
+            echo "-pl $modules_misc"
         ;;
     esac
 }

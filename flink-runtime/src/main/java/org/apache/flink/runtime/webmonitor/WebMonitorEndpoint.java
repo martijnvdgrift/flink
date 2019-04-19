@@ -37,13 +37,13 @@ import org.apache.flink.runtime.rest.handler.cluster.ClusterOverviewHandler;
 import org.apache.flink.runtime.rest.handler.cluster.DashboardConfigHandler;
 import org.apache.flink.runtime.rest.handler.cluster.ShutdownHandler;
 import org.apache.flink.runtime.rest.handler.job.JobAccumulatorsHandler;
+import org.apache.flink.runtime.rest.handler.job.JobCancellationHandler;
 import org.apache.flink.runtime.rest.handler.job.JobConfigHandler;
 import org.apache.flink.runtime.rest.handler.job.JobDetailsHandler;
 import org.apache.flink.runtime.rest.handler.job.JobExceptionsHandler;
 import org.apache.flink.runtime.rest.handler.job.JobExecutionResultHandler;
 import org.apache.flink.runtime.rest.handler.job.JobIdsHandler;
 import org.apache.flink.runtime.rest.handler.job.JobPlanHandler;
-import org.apache.flink.runtime.rest.handler.job.JobTerminationHandler;
 import org.apache.flink.runtime.rest.handler.job.JobVertexAccumulatorsHandler;
 import org.apache.flink.runtime.rest.handler.job.JobVertexBackPressureHandler;
 import org.apache.flink.runtime.rest.handler.job.JobVertexDetailsHandler;
@@ -85,11 +85,11 @@ import org.apache.flink.runtime.rest.messages.ClusterConfigurationInfoHeaders;
 import org.apache.flink.runtime.rest.messages.ClusterOverviewHeaders;
 import org.apache.flink.runtime.rest.messages.DashboardConfigurationHeaders;
 import org.apache.flink.runtime.rest.messages.JobAccumulatorsHeaders;
+import org.apache.flink.runtime.rest.messages.JobCancellationHeaders;
 import org.apache.flink.runtime.rest.messages.JobConfigHeaders;
 import org.apache.flink.runtime.rest.messages.JobExceptionsHeaders;
 import org.apache.flink.runtime.rest.messages.JobIdsWithStatusesOverviewHeaders;
 import org.apache.flink.runtime.rest.messages.JobPlanHeaders;
-import org.apache.flink.runtime.rest.messages.JobTerminationHeaders;
 import org.apache.flink.runtime.rest.messages.JobVertexAccumulatorsHeaders;
 import org.apache.flink.runtime.rest.messages.JobVertexBackPressureHeaders;
 import org.apache.flink.runtime.rest.messages.JobVertexDetailsHeaders;
@@ -118,7 +118,6 @@ import org.apache.flink.runtime.util.ExecutorThreadFactory;
 import org.apache.flink.runtime.webmonitor.history.ArchivedJson;
 import org.apache.flink.runtime.webmonitor.history.JsonArchivist;
 import org.apache.flink.runtime.webmonitor.retriever.GatewayRetriever;
-import org.apache.flink.runtime.webmonitor.retriever.MetricQueryServiceRetriever;
 import org.apache.flink.util.ExceptionUtils;
 import org.apache.flink.util.ExecutorUtils;
 import org.apache.flink.util.FileUtils;
@@ -157,7 +156,7 @@ public class WebMonitorEndpoint<T extends RestfulGateway> extends RestServerEndp
 	private final ExecutionGraphCache executionGraphCache;
 	private final CheckpointStatsCache checkpointStatsCache;
 
-	private final MetricFetcher<? extends T> metricFetcher;
+	private final MetricFetcher metricFetcher;
 
 	private final LeaderElectionService leaderElectionService;
 
@@ -175,7 +174,7 @@ public class WebMonitorEndpoint<T extends RestfulGateway> extends RestServerEndp
 			GatewayRetriever<ResourceManagerGateway> resourceManagerRetriever,
 			TransientBlobService transientBlobService,
 			ExecutorService executor,
-			MetricQueryServiceRetriever metricQueryServiceRetriever,
+			MetricFetcher metricFetcher,
 			LeaderElectionService leaderElectionService,
 			FatalErrorHandler fatalErrorHandler) throws IOException {
 		super(endpointConfiguration);
@@ -193,11 +192,7 @@ public class WebMonitorEndpoint<T extends RestfulGateway> extends RestServerEndp
 		this.checkpointStatsCache = new CheckpointStatsCache(
 			restConfiguration.getMaxCheckpointStatisticCacheEntries());
 
-		this.metricFetcher = new MetricFetcher<>(
-			leaderRetriever,
-			metricQueryServiceRetriever,
-			executor,
-			restConfiguration.getTimeout());
+		this.metricFetcher = metricFetcher;
 
 		this.leaderElectionService = Preconditions.checkNotNull(leaderElectionService);
 		this.fatalErrorHandler = Preconditions.checkNotNull(fatalErrorHandler);
@@ -426,6 +421,13 @@ public class WebMonitorEndpoint<T extends RestfulGateway> extends RestServerEndp
 		final String defaultSavepointDir = clusterConfiguration.getString(CheckpointingOptions.SAVEPOINT_DIRECTORY);
 
 		final SavepointHandlers savepointHandlers = new SavepointHandlers(defaultSavepointDir);
+
+		final SavepointHandlers.StopWithSavepointHandler stopWithSavepointHandler = savepointHandlers.new StopWithSavepointHandler(
+			leaderRetriever,
+			timeout,
+			responseHeaders
+		);
+
 		final SavepointHandlers.SavepointTriggerHandler savepointTriggerHandler = savepointHandlers.new SavepointTriggerHandler(
 			leaderRetriever,
 			timeout,
@@ -481,18 +483,19 @@ public class WebMonitorEndpoint<T extends RestfulGateway> extends RestServerEndp
 			responseHeaders,
 			JobVertexBackPressureHeaders.getInstance());
 
-		final JobTerminationHandler jobCancelTerminationHandler = new JobTerminationHandler(
+		final JobCancellationHandler jobCancelTerminationHandler = new JobCancellationHandler(
 			leaderRetriever,
 			timeout,
 			responseHeaders,
-			JobTerminationHeaders.getInstance(),
+			JobCancellationHeaders.getInstance(),
 			TerminationModeQueryParameter.TerminationMode.CANCEL);
 
-		final JobTerminationHandler jobStopTerminationHandler = new JobTerminationHandler(
+		// this is kept just for legacy reasons. STOP has been replaced by STOP-WITH-SAVEPOINT.
+		final JobCancellationHandler jobStopTerminationHandler = new JobCancellationHandler(
 			leaderRetriever,
 			timeout,
 			responseHeaders,
-			JobTerminationHeaders.getInstance(),
+			JobCancellationHeaders.getInstance(),
 			TerminationModeQueryParameter.TerminationMode.STOP);
 
 		final JobVertexDetailsHandler jobVertexDetailsHandler = new JobVertexDetailsHandler(
@@ -565,6 +568,7 @@ public class WebMonitorEndpoint<T extends RestfulGateway> extends RestServerEndp
 		handlers.add(Tuple2.of(aggregatingSubtasksMetricsHandler.getMessageHeaders(), aggregatingSubtasksMetricsHandler));
 		handlers.add(Tuple2.of(jobExecutionResultHandler.getMessageHeaders(), jobExecutionResultHandler));
 		handlers.add(Tuple2.of(savepointTriggerHandler.getMessageHeaders(), savepointTriggerHandler));
+		handlers.add(Tuple2.of(stopWithSavepointHandler.getMessageHeaders(), stopWithSavepointHandler));
 		handlers.add(Tuple2.of(savepointStatusHandler.getMessageHeaders(), savepointStatusHandler));
 		handlers.add(Tuple2.of(subtaskExecutionAttemptDetailsHandler.getMessageHeaders(), subtaskExecutionAttemptDetailsHandler));
 		handlers.add(Tuple2.of(subtaskExecutionAttemptAccumulatorsHandler.getMessageHeaders(), subtaskExecutionAttemptAccumulatorsHandler));
