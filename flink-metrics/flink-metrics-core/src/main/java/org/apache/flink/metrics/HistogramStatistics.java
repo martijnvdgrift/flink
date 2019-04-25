@@ -41,6 +41,7 @@ public abstract class HistogramStatistics {
 	 */
 	public abstract long[] getValues();
 
+
 	/**
 	 * Returns the size of the statistics' sample.
 	 *

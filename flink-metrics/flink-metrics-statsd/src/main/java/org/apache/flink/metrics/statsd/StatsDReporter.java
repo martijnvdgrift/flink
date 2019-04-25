@@ -132,6 +132,7 @@ public class StatsDReporter extends AbstractReporter implements Scheduled {
 
 	private void reportGauge(final String name, final Gauge<?> gauge) {
 		Object value = gauge.getValue();
+
 		if (value != null) {
 			send(name, value.toString());
 		}

@@ -1,0 +1,104 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+		 xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+		 xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+	<parent>
+		<artifactId>flink-metrics</artifactId>
+		<groupId>org.apache.flink</groupId>
+		<version>1.9-SNAPSHOT</version>
+		<relativePath>..</relativePath>
+	</parent>
+
+	<modelVersion>4.0.0</modelVersion>
+
+	<artifactId>flink-metrics-stackdriver</artifactId>
+	<name>flink-metrics-stackdriver</name>
+
+	<dependencies>
+		<dependency>
+			<groupId>org.apache.flink</groupId>
+			<artifactId>flink-annotations</artifactId>
+			<version>${project.version}</version>
+			<scope>provided</scope>
+		</dependency>
+
+		<dependency>
+			<groupId>org.apache.flink</groupId>
+			<artifactId>flink-metrics-core</artifactId>
+			<version>${project.version}</version>
+			<scope>provided</scope>
+		</dependency>
+
+		<dependency>
+			<groupId>com.google.cloud</groupId>
+			<artifactId>google-cloud-monitoring</artifactId>
+			<version>1.70.0</version>
+		</dependency>
+
+		<dependency>
+			<groupId>org.apache.flink</groupId>
+			<artifactId>flink-runtime_${scala.binary.version}</artifactId>
+			<version>${project.version}</version>
+			<scope>test</scope>
+		</dependency>
+
+		<dependency>
+			<groupId>org.apache.flink</groupId>
+			<artifactId>flink-test-utils-junit</artifactId>
+			<version>${project.version}</version>
+			<scope>test</scope>
+		</dependency>
+	</dependencies>
+
+	<build>
+		<plugins>
+			<plugin>
+				<groupId>org.apache.maven.plugins</groupId>
+				<artifactId>maven-shade-plugin</artifactId>
+				<executions>
+					<execution>
+						<id>shade-flink</id>
+						<phase>package</phase>
+						<goals>
+							<goal>shade</goal>
+						</goals>
+						<configuration>
+							<artifactSet>
+								<includes>
+									<include>com.google.protobuf:*</include>
+									<include>com.google.cloud:*</include>
+									<include>com.google.monitoring:*</include>
+									<include>com.google.api:*</include>
+									<include>org.threeten.bp.Duration:*</include>
+								</includes>
+							</artifactSet>
+							<promoteTransitiveDependencies>true</promoteTransitiveDependencies>
+							<relocations combine.children="append">
+								<relocation>
+									<pattern>protobuf</pattern>
+									<shadedPattern>org.apache.flink.shaded.google.protobuf</shadedPattern>
+								</relocation>
+								<relocation>
+									<pattern>cloud</pattern>
+									<shadedPattern>org.apache.flink.shaded.google.cloud</shadedPattern>
+								</relocation>
+								<relocation>
+									<pattern>monitoring</pattern>
+									<shadedPattern>org.apache.flink.shaded.google.monitoring</shadedPattern>
+								</relocation>
+								<relocation>
+									<pattern>api</pattern>
+									<shadedPattern>org.apache.flink.shaded.google.api</shadedPattern>
+								</relocation>
+								<relocation>
+									<pattern>Duration</pattern>
+									<shadedPattern>org.apache.flink.shaded.google.Duration</shadedPattern>
+								</relocation>
+							</relocations>
+						</configuration>
+					</execution>
+				</executions>
+			</plugin>
+		</plugins>
+	</build>
+</project>
