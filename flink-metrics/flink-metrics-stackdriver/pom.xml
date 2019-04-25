@@ -52,52 +52,22 @@
 
 	<build>
 		<plugins>
+			<!-- any other plugins -->
 			<plugin>
-				<groupId>org.apache.maven.plugins</groupId>
-				<artifactId>maven-shade-plugin</artifactId>
+				<artifactId>maven-assembly-plugin</artifactId>
 				<executions>
 					<execution>
-						<id>shade-flink</id>
 						<phase>package</phase>
 						<goals>
-							<goal>shade</goal>
+							<goal>single</goal>
 						</goals>
-						<configuration>
-							<artifactSet>
-								<includes>
-									<include>com.google.protobuf:*</include>
-									<include>com.google.cloud:*</include>
-									<include>com.google.monitoring:*</include>
-									<include>com.google.api:*</include>
-									<include>org.threeten.bp.Duration:*</include>
-								</includes>
-							</artifactSet>
-							<promoteTransitiveDependencies>true</promoteTransitiveDependencies>
-							<relocations combine.children="append">
-								<relocation>
-									<pattern>protobuf</pattern>
-									<shadedPattern>org.apache.flink.shaded.google.protobuf</shadedPattern>
-								</relocation>
-								<relocation>
-									<pattern>cloud</pattern>
-									<shadedPattern>org.apache.flink.shaded.google.cloud</shadedPattern>
-								</relocation>
-								<relocation>
-									<pattern>monitoring</pattern>
-									<shadedPattern>org.apache.flink.shaded.google.monitoring</shadedPattern>
-								</relocation>
-								<relocation>
-									<pattern>api</pattern>
-									<shadedPattern>org.apache.flink.shaded.google.api</shadedPattern>
-								</relocation>
-								<relocation>
-									<pattern>Duration</pattern>
-									<shadedPattern>org.apache.flink.shaded.google.Duration</shadedPattern>
-								</relocation>
-							</relocations>
-						</configuration>
 					</execution>
 				</executions>
+				<configuration>
+					<descriptorRefs>
+						<descriptorRef>jar-with-dependencies</descriptorRef>
+					</descriptorRefs>
+				</configuration>
 			</plugin>
 		</plugins>
 	</build>
