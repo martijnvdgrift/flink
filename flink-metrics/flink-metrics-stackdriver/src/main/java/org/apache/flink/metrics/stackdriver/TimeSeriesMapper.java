@@ -27,8 +27,8 @@ public class TimeSeriesMapper {
 
 	static Collection<TimeSeries> map(MetricInformation metricInfo, TimeInterval interval, Meter meter) {
 		return Arrays.asList(
-			createTimeSeries(metricInfo, "count", createPoint(interval, createCountValue(meter))),
-			createTimeSeries(metricInfo, "rate", createPoint(interval, createRateValue(meter)))
+			createTimeSeries(metricInfo, "/count", createPoint(interval, createCountValue(meter))),
+			createTimeSeries(metricInfo, "/rate", createPoint(interval, createRateValue(meter)))
 		);
 	}
 
@@ -41,14 +41,14 @@ public class TimeSeriesMapper {
 		return createTimeSeries(metricInfo, createPoint(interval, createValue(gauge)));
 	}
 
-	private static TypedValue createValue(Histogram histogram) {
-		//todo:
-//		return TypedValue.newBuilder()
-//			.setDistributionValue()
-//			.setDistributionValue()
-//			.build();
-		return null;
-	}
+//	private static TypedValue createValue(Histogram histogram) {
+//		//todo:
+////		return TypedValue.newBuilder()
+////			.setDistributionValue()
+////			.setDistributionValue()
+////			.build();
+//		return null;
+//	}
 
 	private static TypedValue createCountValue(Meter meter) {
 
@@ -76,7 +76,8 @@ public class TimeSeriesMapper {
 		if (value instanceof Double) {
 			valueBuilder.setDoubleValue((Double) value);
 		} else if (value instanceof Number) {
-			valueBuilder.setInt64Value((long) value);
+			long longValue = ((Number) value).longValue();
+			valueBuilder.setInt64Value(longValue);
 		} else {
 			valueBuilder.setStringValue(String.valueOf(value));
 		}
@@ -100,8 +101,9 @@ public class TimeSeriesMapper {
 	private static Metric createMetric(MetricInformation metricInfo, String suffix) {
 		// todo: do we need to set labels here?
 		//todo: do something with parsing it into the correct name
+
 		return Metric.newBuilder()
-			.setType(metricInfo.fullyQualifiedMetricName() + suffix)
+			.setType(metricInfo.getMetricType() + suffix)
 			.build();
 	}
 
@@ -123,13 +125,13 @@ public class TimeSeriesMapper {
 			.build();
 	}
 
-	//todo: not used.
-	private static Distribution createDistribution(Histogram histogram) {
-		HistogramStatistics stats = histogram.getStatistics();
-
-		return Distribution.newBuilder()
-			.setMean(stats.getMean())
-			.setCount(histogram.getCount())
-			.build();
-	}
+//	//todo: not used.
+//	private static Distribution createDistribution(Histogram histogram) {
+//		HistogramStatistics stats = histogram.getStatistics();
+//
+//		return Distribution.newBuilder()
+//			.setMean(stats.getMean())
+//			.setCount(histogram.getCount())
+//			.build();
+//	}
 }

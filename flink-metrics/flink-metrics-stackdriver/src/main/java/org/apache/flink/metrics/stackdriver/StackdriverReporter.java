@@ -26,14 +26,14 @@ public class StackdriverReporter extends AbstractReporter implements Scheduled {
 	public String filterCharacters(String input) {
 		//todo: can we use this to filter illegal (stackdriver) characters?
 		//todo: can we use this to filter the *.internal stuff out of it?
-		return null;
+		return input;
 	}
 
 	@Override
 	public void open(MetricConfig config) {
 		this.projectId = config.getString(StackDriverClient.PROJECT_ID_KEY, "bigdata_evaulation");
 		this.location = config.getString(StackDriverClient.LOCATION_KEY, "europe-west4-a");
-		this.metricPrefix = config.getString(StackDriverClient.METRIC_PREFIX_KEY, "custom.googleapis.com/b.flink/");
+		this.metricPrefix = config.getString(StackDriverClient.METRIC_PREFIX_KEY, "custom.googleapis.com/flink/");
 		try {
 			client = new StackDriverClient(projectId);
 		} catch (IOException e) {
@@ -69,8 +69,7 @@ public class StackdriverReporter extends AbstractReporter implements Scheduled {
 			MetricInformation metricInformation = new MetricInformation(projectId, location, metricPrefix, entry.getValue());
 			client.reportMeter(metricInformation, entry.getKey());
 		}
-		//todo: uncomment this :)
 
-		//		client.send();
+		client.send();
 	}
 }
